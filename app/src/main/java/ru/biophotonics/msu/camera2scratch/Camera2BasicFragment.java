@@ -231,12 +231,8 @@ public class Camera2BasicFragment extends Fragment
     private ImageReader mImageReader;
 
     /**
-     * This is the output file for our picture.
-     */
-    private File mFile;
-
-    /**
-     * This a callback object for the {@link ImageReader}. "onImageAvailable" will be called when a
+     * This a callback object for the {@link ImageReader}. "onImageAvailable"
+     * will be called when a
      * still image is ready to be saved.
      */
     private final ImageReader.OnImageAvailableListener mOnImageAvailableListener
@@ -440,7 +436,6 @@ public class Camera2BasicFragment extends Fragment
     @Override
     public void onActivityCreated(Bundle savedInstanceState) {
         super.onActivityCreated(savedInstanceState);
-        mFile = new File(getActivity().getExternalFilesDir(null), "pic.jpg");
     }
 
     @Override
@@ -926,8 +921,8 @@ public class Camera2BasicFragment extends Fragment
                     } catch (CameraAccessException e) {
                         e.printStackTrace();
                     }
-                    showToast("Saved: " + mFile);
-                    Log.d(TAG, mFile.toString());
+                    showToast("Saved: " + mImageFileName);
+                    Log.d(TAG,"Image saved:"+mImageFileName);
 
                     unlockFocus(); //this returns camera to normal state.
                 }
