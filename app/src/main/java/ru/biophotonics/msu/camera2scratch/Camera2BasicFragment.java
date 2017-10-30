@@ -244,7 +244,7 @@ public class Camera2BasicFragment extends Fragment
 
         @Override
         public void onImageAvailable(ImageReader reader) {
-            mBackgroundHandler.post(new ImageSaver(reader.acquireLatestImage(), mFile));
+            mBackgroundHandler.post(new ImageSaver(reader.acquireLatestImage()));
         }
 
     };
@@ -1019,11 +1019,9 @@ public class Camera2BasicFragment extends Fragment
         /**
          * The file we save the image into.
          */
-        private final File mFile;
 
-        ImageSaver(Image image, File file) {
+        ImageSaver(Image image) {
             mImage = image;
-            mFile = file;
         }
 
         @Override
