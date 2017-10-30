@@ -6,6 +6,7 @@ import android.app.AlertDialog;
 import android.app.Dialog;
 import android.content.Context;
 import android.content.DialogInterface;
+import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.content.res.Configuration;
 import android.graphics.ImageFormat;
@@ -25,7 +26,10 @@ import android.hardware.camera2.TotalCaptureResult;
 import android.hardware.camera2.params.StreamConfigurationMap;
 import android.media.Image;
 import android.media.ImageReader;
+import android.net.Uri;
+import android.os.Build;
 import android.os.Bundle;
+import android.os.Environment;
 import android.os.Handler;
 import android.os.HandlerThread;
 import android.support.annotation.NonNull;
@@ -47,10 +51,12 @@ import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.Comparator;
+import java.util.Date;
 import java.util.List;
 import java.util.concurrent.Semaphore;
 import java.util.concurrent.TimeUnit;
@@ -65,7 +71,11 @@ public class Camera2BasicFragment extends Fragment
      */
     private static final SparseIntArray ORIENTATIONS = new SparseIntArray();
     private static final int REQUEST_CAMERA_PERMISSION = 1;
+    private static final int REQUEST_WRITE_EXTERNAL_STORAGE_PERMISSION_RESULT = 2;
     private static final String FRAGMENT_DIALOG = "dialog";
+
+    private File mImageFolder;
+    private String mImageFileName;
 
     static {
         ORIENTATIONS.append(Surface.ROTATION_0, 90);
@@ -414,6 +424,9 @@ public class Camera2BasicFragment extends Fragment
     @Override
     public View onCreateView(LayoutInflater inflater, ViewGroup container,
                              Bundle savedInstanceState) {
+
+        createImageFolder();
+
         return inflater.inflate(R.layout.fragment_camera2_basic, container, false);
     }
 
@@ -464,15 +477,30 @@ public class Camera2BasicFragment extends Fragment
     @Override
     public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions,
                                            @NonNull int[] grantResults) {
-        if (requestCode == REQUEST_CAMERA_PERMISSION) {
-            if (grantResults.length != 1 || grantResults[0] != PackageManager.PERMISSION_GRANTED) {
-                ErrorDialog.newInstance(getString(R.string.request_permission))
-                        .show(getChildFragmentManager(), FRAGMENT_DIALOG);
+        switch(requestCode){
+            case REQUEST_CAMERA_PERMISSION:{
+                if (requestCode == REQUEST_CAMERA_PERMISSION) {
+                    if (grantResults.length != 1 || grantResults[0]
+                            != PackageManager.PERMISSION_GRANTED) {
+                        ErrorDialog.newInstance(getString(R.string.request_permission))
+                                .show(getChildFragmentManager(), FRAGMENT_DIALOG);
+                    }
+                } else{
+                    super.onRequestPermissionsResult(requestCode, permissions, grantResults);
+                }
             }
-        } else {
-            super.onRequestPermissionsResult(requestCode, permissions, grantResults);
+            case REQUEST_WRITE_EXTERNAL_STORAGE_PERMISSION_RESULT:{
+                if(requestCode == REQUEST_WRITE_EXTERNAL_STORAGE_PERMISSION_RESULT){
+                    if (grantResults.length != 1 || grantResults[0]
+                            != PackageManager.PERMISSION_GRANTED) {
+                        ErrorDialog.newInstance("Необходим доступ к галерее")
+                                .show(getChildFragmentManager(), FRAGMENT_DIALOG);
+                    }
+                }
+            }
         }
     }
+
 
     /**
      * Sets up member variables related to camera.
@@ -608,6 +636,13 @@ public class Camera2BasicFragment extends Fragment
             requestCameraPermission();
             return;
         }
+
+        if (ContextCompat.checkSelfPermission(getActivity(),Manifest.permission.WRITE_EXTERNAL_STORAGE)
+                != PackageManager.PERMISSION_GRANTED){
+            checkWriteStoragePermission();
+            return;
+        }
+
         setUpCameraOutputs(width, height);
         configureTransform(width, height);
         Activity activity = getActivity();
@@ -777,6 +812,37 @@ public class Camera2BasicFragment extends Fragment
         }
     }
 
+    private void createImageFolder() {
+        File imageFile = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_PICTURES);
+        mImageFolder = new File(imageFile, "camera2scratch");
+        if(!mImageFolder.exists()) {
+            mImageFolder.mkdirs();
+        }
+    }
+
+    private File createImageFileName() throws IOException {
+        String timestamp = new SimpleDateFormat("yyyyMMdd_HHmmss").format(new Date());
+        String prepend = "IMAGE_" + timestamp + "_";
+        File imageFile = File.createTempFile(prepend, ".jpg", mImageFolder);
+        mImageFileName = imageFile.getAbsolutePath();
+        return imageFile;
+    }
+
+
+    private void checkWriteStoragePermission() {
+        if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            if(ContextCompat.checkSelfPermission(getActivity(), Manifest.permission.WRITE_EXTERNAL_STORAGE)
+                    == PackageManager.PERMISSION_GRANTED) {
+            } else {
+                if(shouldShowRequestPermissionRationale(Manifest.permission.WRITE_EXTERNAL_STORAGE)) {
+                    Toast.makeText(getActivity(), "app needs to be able to save videos", Toast.LENGTH_SHORT).show();
+                }
+                requestPermissions(new String[]{Manifest.permission.WRITE_EXTERNAL_STORAGE},
+                        REQUEST_WRITE_EXTERNAL_STORAGE_PERMISSION_RESULT);
+            }
+        }
+    }
+
     /**
      * Lock the focus as the first step for a still image capture.
      */
@@ -822,6 +888,8 @@ public class Camera2BasicFragment extends Fragment
             if (null == activity || null == mCameraDevice) {
                 return;
             }
+
+
             // This is the CaptureRequest.Builder that we use to take a picture.
             final CaptureRequest.Builder captureBuilder =
                     mCameraDevice.createCaptureRequest(CameraDevice.TEMPLATE_STILL_CAPTURE);
@@ -838,6 +906,16 @@ public class Camera2BasicFragment extends Fragment
 
             CameraCaptureSession.CaptureCallback CaptureCallback
                     = new CameraCaptureSession.CaptureCallback() {
+
+                @Override
+                public void onCaptureStarted(@NonNull CameraCaptureSession session, @NonNull CaptureRequest request, long timestamp, long frameNumber) {
+                    super.onCaptureStarted(session, request, timestamp, frameNumber);
+                    try {
+                        createImageFileName();
+                    } catch (IOException e) {
+                        e.printStackTrace();
+                    }
+                }
 
                 @Override
                 public void onCaptureCompleted(@NonNull CameraCaptureSession session,
@@ -932,7 +1010,7 @@ public class Camera2BasicFragment extends Fragment
     /**
      * Saves a JPEG {@link Image} into the specified {@link File}.
      */
-    private static class ImageSaver implements Runnable {
+    private class ImageSaver implements Runnable {
 
         /**
          * The JPEG image
@@ -955,12 +1033,17 @@ public class Camera2BasicFragment extends Fragment
             buffer.get(bytes);
             FileOutputStream output = null;
             try {
-                output = new FileOutputStream(mFile);
+                output = new FileOutputStream(mImageFileName);
                 output.write(bytes);
             } catch (IOException e) {
                 e.printStackTrace();
             } finally {
                 mImage.close();
+
+                Intent mediaStoreUpdateIntent = new Intent(Intent.ACTION_MEDIA_SCANNER_SCAN_FILE);
+                mediaStoreUpdateIntent.setData(Uri.fromFile(new File(mImageFileName)));
+                getActivity().sendBroadcast(mediaStoreUpdateIntent);
+
                 if (null != output) {
                     try {
                         output.close();
@@ -1006,6 +1089,8 @@ public class Camera2BasicFragment extends Fragment
         @Override
         public Dialog onCreateDialog(Bundle savedInstanceState) {
             final Activity activity = getActivity();
+
+
             return new AlertDialog.Builder(activity)
                     .setMessage(getArguments().getString(ARG_MESSAGE))
                     .setPositiveButton(android.R.string.ok, new DialogInterface.OnClickListener() {
