@@ -45,6 +45,7 @@ import android.view.Surface;
 import android.view.TextureView;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.FrameLayout;
 import android.widget.Toast;
 
 import java.io.File;
@@ -75,7 +76,7 @@ public class Camera2BasicFragment extends Fragment
     private static final String FRAGMENT_DIALOG = "dialog";
 
     private File mImageFolder;
-    private String mImageFileName;
+    private String mImagePath;
 
     static {
         ORIENTATIONS.append(Surface.ROTATION_0, 90);
@@ -280,6 +281,10 @@ public class Camera2BasicFragment extends Fragment
     /**
      * A {@link CameraCaptureSession.CaptureCallback} that handles events related to JPEG capture.
      */
+
+    FrameLayout mAcceptControl;
+
+
     private CameraCaptureSession.CaptureCallback mCaptureCallback
             = new CameraCaptureSession.CaptureCallback() {
 
@@ -422,7 +427,6 @@ public class Camera2BasicFragment extends Fragment
                              Bundle savedInstanceState) {
 
         createImageFolder();
-
         return inflater.inflate(R.layout.fragment_camera2_basic, container, false);
     }
 
@@ -430,7 +434,12 @@ public class Camera2BasicFragment extends Fragment
     public void onViewCreated(final View view, Bundle savedInstanceState) {
         view.findViewById(R.id.picture).setOnClickListener(this);
         view.findViewById(R.id.info).setOnClickListener(this);
+        view.findViewById(R.id.accept_button).setOnClickListener(this);
+        view.findViewById(R.id.decline_button).setOnClickListener(this);
+
         mTextureView = (AutoFitTextureView) view.findViewById(R.id.texture);
+
+        mAcceptControl = (FrameLayout) view.findViewById(R.id.control_accept);
     }
 
     @Override
@@ -819,7 +828,7 @@ public class Camera2BasicFragment extends Fragment
         String timestamp = new SimpleDateFormat("yyyyMMdd_HHmmss").format(new Date());
         String prepend = "IMAGE_" + timestamp + "_";
         File imageFile = File.createTempFile(prepend, ".jpg", mImageFolder);
-        mImageFileName = imageFile.getAbsolutePath();
+        mImagePath = imageFile.getAbsolutePath();
         return imageFile;
     }
 
@@ -923,10 +932,10 @@ public class Camera2BasicFragment extends Fragment
                     } catch (CameraAccessException e) {
                         e.printStackTrace();
                     }
-                    showToast("Saved: " + mImageFileName);
-                    Log.d(TAG,"Image saved:"+mImageFileName);
+                    showToast("Saved: " + mImagePath);
+                    Log.d(TAG,"Image saved:"+ mImagePath);
 
-                    unlockFocus(); //this returns camera to normal state.
+                    //unlockFocus(); //this returns camera to normal state.
                 }
             };
 
@@ -982,7 +991,9 @@ public class Camera2BasicFragment extends Fragment
         switch (view.getId()) {
             case R.id.picture: {
                 takePicture();
+                mAcceptControl.setVisibility(View.VISIBLE);
                 break;
+
             }
             case R.id.info: {
                 Activity activity = getActivity();
@@ -992,6 +1003,23 @@ public class Camera2BasicFragment extends Fragment
                             .setPositiveButton(android.R.string.ok, null)
                             .show();
                 }
+                break;
+            }
+
+            case R.id.accept_button:{
+                Activity activity = getActivity();
+                if (null != activity){
+                    Intent intent = new Intent(activity, ImageActivity.class);
+                    intent.putExtra("ImagePath", mImagePath);
+                    startActivity(intent);
+                    activity.finish();
+                }
+                break;
+            }
+
+            case R.id.decline_button:{
+                unlockFocus();
+                mAcceptControl.setVisibility(View.GONE);
                 break;
             }
         }
@@ -1028,7 +1056,11 @@ public class Camera2BasicFragment extends Fragment
             buffer.get(bytes);
             FileOutputStream output = null;
             try {
-                output = new FileOutputStream(mImageFileName);
+                if(mImagePath == null){
+                    createImageFolder();
+                    createImageFileName();
+                }
+                output = new FileOutputStream(mImagePath);
                 output.write(bytes);
             } catch (IOException e) {
                 e.printStackTrace();
@@ -1036,7 +1068,7 @@ public class Camera2BasicFragment extends Fragment
                 mImage.close();
 
                 Intent mediaStoreUpdateIntent = new Intent(Intent.ACTION_MEDIA_SCANNER_SCAN_FILE);
-                mediaStoreUpdateIntent.setData(Uri.fromFile(new File(mImageFileName)));
+                mediaStoreUpdateIntent.setData(Uri.fromFile(new File(mImagePath)));
                 getActivity().sendBroadcast(mediaStoreUpdateIntent);
 
                 if (null != output) {
