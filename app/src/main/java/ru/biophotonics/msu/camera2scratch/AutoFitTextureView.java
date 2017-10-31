@@ -2,12 +2,14 @@ package ru.biophotonics.msu.camera2scratch;
 
 import android.content.Context;
 import android.util.AttributeSet;
+import android.view.MotionEvent;
 import android.view.TextureView;
+import android.view.View;
 
 /**
  * A {@link TextureView} that can be adjusted to a specified aspect ratio.
  */
-public class AutoFitTextureView extends TextureView {
+public class AutoFitTextureView extends TextureView implements View.OnTouchListener {
 
     private int mRatioWidth = 0;
     private int mRatioHeight = 0;
@@ -57,4 +59,12 @@ public class AutoFitTextureView extends TextureView {
         }
     }
 
+    public void setOnTouchListener() {
+
+    }
+
+    @Override
+    public boolean onTouch(View v, MotionEvent event) {
+        return false;
+    }
 }
