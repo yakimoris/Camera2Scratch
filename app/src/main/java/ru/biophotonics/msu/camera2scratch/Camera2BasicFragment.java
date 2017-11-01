@@ -22,7 +22,6 @@ import android.hardware.camera2.CameraManager;
 import android.hardware.camera2.CameraMetadata;
 import android.hardware.camera2.CaptureFailure;
 import android.hardware.camera2.CaptureRequest;
-import android.hardware.camera2.CaptureResult;
 import android.hardware.camera2.TotalCaptureResult;
 import android.hardware.camera2.params.MeteringRectangle;
 import android.hardware.camera2.params.StreamConfigurationMap;
@@ -80,7 +79,7 @@ public class Camera2BasicFragment extends Fragment
     private static final Integer CUSTOM_JPEG_ORIENTATION = 0 ;
 
     private File mImageFolder;
-    private String mImagePath;
+    private File mImageFile;
 
     static {
         ORIENTATIONS.append(Surface.ROTATION_0, 90);
@@ -245,7 +244,7 @@ public class Camera2BasicFragment extends Fragment
 
         @Override
         public void onImageAvailable(ImageReader reader) {
-            mBackgroundHandler.post(new ImageSaver(reader.acquireLatestImage()));
+            mBackgroundHandler.post(new ImageSaver(reader.acquireLatestImage(),mImageFile));
         }
 
     };
@@ -289,84 +288,84 @@ public class Camera2BasicFragment extends Fragment
     FrameLayout mAcceptControl;
 
 
-    private CameraCaptureSession.CaptureCallback mCaptureCallback
-            = new CameraCaptureSession.CaptureCallback() {
-
-        private void process(CaptureResult result) {
-            switch (mState) {
-                case STATE_PREVIEW: {
-                    // We have nothing to do when the camera preview is working normally.
-                    break;
-                }
-                case STATE_WAITING_LOCK: {
-
-                    Integer afState = result.get(CaptureResult.CONTROL_AF_STATE);
-
-                    if (afState == null) {
-                        mState = STATE_PICTURE_TAKEN;
-                        captureStillPicture();
-                    } else if (CaptureResult.CONTROL_AF_STATE_FOCUSED_LOCKED == afState ||
-                            CaptureResult.CONTROL_AF_STATE_NOT_FOCUSED_LOCKED == afState ||
-                            CaptureResult.CONTROL_AF_STATE_PASSIVE_FOCUSED == afState ||
-                            CaptureResult.CONTROL_AF_STATE_PASSIVE_UNFOCUSED == afState) {
-                        // CONTROL_AE_STATE can be null on some devices
-
-                        Integer aeState = result.get(CaptureResult.CONTROL_AE_STATE);
-
-                        if (aeState == null ||
-                                aeState == CaptureResult.CONTROL_AE_STATE_CONVERGED) {
-
-
-                            mState = STATE_PICTURE_TAKEN;
-                            captureStillPicture();
-                        } else {
-
-                            runPrecaptureSequence();
-                        }
-                    }
-                    break;
-                }
-                case STATE_WAITING_PRECAPTURE: {
-
-                    showToast("process: state waiting precapture");
-                    // CONTROL_AE_STATE can be null on some devices
-                    Integer aeState = result.get(CaptureResult.CONTROL_AE_STATE);
-                    if (aeState == null ||
-                            aeState == CaptureResult.CONTROL_AE_STATE_PRECAPTURE ||
-                            aeState == CaptureRequest.CONTROL_AE_STATE_FLASH_REQUIRED) {
-                        mState = STATE_WAITING_NON_PRECAPTURE;
-                    }
-                    break;
-                }
-                case STATE_WAITING_NON_PRECAPTURE: {
-                    showToast("state waiting non precapture");
-                    // CONTROL_AE_STATE can be null on some devices
-                    Integer aeState = result.get(CaptureResult.CONTROL_AE_STATE);
-                    if (aeState == null || aeState != CaptureResult.CONTROL_AE_STATE_PRECAPTURE) {
-                        mState = STATE_PICTURE_TAKEN;
-                        captureStillPicture();
-                    }
-                    break;
-                }
-            }
-        }
-
-        @Override
-        public void onCaptureProgressed(@NonNull CameraCaptureSession session,
-                                        @NonNull CaptureRequest request,
-                                        @NonNull CaptureResult partialResult) {
-            process(partialResult);
-        }
-
-        @Override
-        public void onCaptureCompleted(@NonNull CameraCaptureSession session,
-                                       @NonNull CaptureRequest request,
-                                       @NonNull TotalCaptureResult result) {
-
-            process(result);
-        }
-
-    };
+    private CameraCaptureSession.CaptureCallback mCaptureCallback = null;
+//            = new CameraCaptureSession.CaptureCallback() {
+//
+//        private void process(CaptureResult result) {
+//            switch (mState) {
+//                case STATE_PREVIEW: {
+//                    // We have nothing to do when the camera preview is working normally.
+//                    break;
+//                }
+//                case STATE_WAITING_LOCK: {
+//
+//                    Integer afState = result.get(CaptureResult.CONTROL_AF_STATE);
+//
+//                    if (afState == null) {
+//                        mState = STATE_PICTURE_TAKEN;
+//                        captureStillPicture();
+//                    } else if (CaptureResult.CONTROL_AF_STATE_FOCUSED_LOCKED == afState ||
+//                            CaptureResult.CONTROL_AF_STATE_NOT_FOCUSED_LOCKED == afState ||
+//                            CaptureResult.CONTROL_AF_STATE_PASSIVE_FOCUSED == afState ||
+//                            CaptureResult.CONTROL_AF_STATE_PASSIVE_UNFOCUSED == afState) {
+//                        // CONTROL_AE_STATE can be null on some devices
+//
+//                        Integer aeState = result.get(CaptureResult.CONTROL_AE_STATE);
+//
+//                        if (aeState == null ||
+//                                aeState == CaptureResult.CONTROL_AE_STATE_CONVERGED) {
+//
+//
+//                            mState = STATE_PICTURE_TAKEN;
+//                            captureStillPicture();
+//                        } else {
+//
+//                            runPrecaptureSequence();
+//                        }
+//                    }
+//                    break;
+//                }
+//                case STATE_WAITING_PRECAPTURE: {
+//
+//                    showToast("process: state waiting precapture");
+//                    // CONTROL_AE_STATE can be null on some devices
+//                    Integer aeState = result.get(CaptureResult.CONTROL_AE_STATE);
+//                    if (aeState == null ||
+//                            aeState == CaptureResult.CONTROL_AE_STATE_PRECAPTURE ||
+//                            aeState == CaptureRequest.CONTROL_AE_STATE_FLASH_REQUIRED) {
+//                        mState = STATE_WAITING_NON_PRECAPTURE;
+//                    }
+//                    break;
+//                }
+//                case STATE_WAITING_NON_PRECAPTURE: {
+//                    showToast("state waiting non precapture");
+//                    // CONTROL_AE_STATE can be null on some devices
+//                    Integer aeState = result.get(CaptureResult.CONTROL_AE_STATE);
+//                    if (aeState == null || aeState != CaptureResult.CONTROL_AE_STATE_PRECAPTURE) {
+//                        mState = STATE_PICTURE_TAKEN;
+//                        captureStillPicture();
+//                    }
+//                    break;
+//                }
+//            }
+//        }
+//
+//        @Override
+//        public void onCaptureProgressed(@NonNull CameraCaptureSession session,
+//                                        @NonNull CaptureRequest request,
+//                                        @NonNull CaptureResult partialResult) {
+//            process(partialResult);
+//        }
+//
+//        @Override
+//        public void onCaptureCompleted(@NonNull CameraCaptureSession session,
+//                                       @NonNull CaptureRequest request,
+//                                       @NonNull TotalCaptureResult result) {
+//
+//            process(result);
+//        }
+//
+//    };
     private CameraCharacteristics mCameraInfo;
     private boolean mManualFocusEngaged = false;
 
@@ -496,6 +495,7 @@ public class Camera2BasicFragment extends Fragment
 
     @Override
     public void onPause() {
+
         closeCamera();
         stopBackgroundThread();
         super.onPause();
@@ -702,8 +702,6 @@ public class Camera2BasicFragment extends Fragment
 
            @Override
            public boolean onTouch(View view, MotionEvent motionEvent) {
-
-
 
                Log.d(TAG,"onTouch");
                final int actionMasked = motionEvent.getActionMasked();
@@ -952,7 +950,8 @@ public class Camera2BasicFragment extends Fragment
 
         if(!mManualFocusEngaged){
             if(mAutoFocusSupported){
-                lockFocus();
+                //lockFocus();
+                captureStillPicture();
                 //TODO: DELETE
                 showToast("AutoFocus supported");
             }
@@ -971,12 +970,12 @@ public class Camera2BasicFragment extends Fragment
         }
     }
 
-    private File createImageFileName() throws IOException {
+    private File createImageFile() throws IOException {
         String timestamp = new SimpleDateFormat("yyyyMMdd_HHmmss").format(new Date());
         String prepend = "U_" + timestamp;
         File imageFile = new File(mImageFolder,prepend+".jpg" );
-        mImagePath = imageFile.getAbsolutePath();
-        Log.d(TAG,"createImageFileName:: ImagePath"+mImagePath);
+        mImageFile = imageFile;
+        Log.d(TAG,"createImageFile:: ImagePath"+mImageFile.getAbsolutePath());
         return imageFile;
     }
 
@@ -1068,9 +1067,20 @@ public class Camera2BasicFragment extends Fragment
                 @Override
                 public void onCaptureStarted(@NonNull CameraCaptureSession session, @NonNull CaptureRequest request, long timestamp, long frameNumber) {
                     super.onCaptureStarted(session, request, timestamp, frameNumber);
+
+                    try {
+                        createImageFile();
+                    } catch (IOException e) {
+                        e.printStackTrace();
+                        try {
+                            session.abortCaptures();
+                        } catch (CameraAccessException e1) {
+                            e1.printStackTrace();
+                        }
+                    }
 //                    Log.d(TAG,"onCaptureStarted::capture started");
 //                    try {
-//                        createImageFileName();
+//                        createImageFile();
 //                        Log.d(TAG,"onCaptureStarted::mImagePath" + mImagePath);
 //                    } catch (IOException e) {
 //                        e.printStackTrace();
@@ -1086,8 +1096,8 @@ public class Camera2BasicFragment extends Fragment
                     } catch (CameraAccessException e) {
                         e.printStackTrace();
                     }
-                    showToast("Saved: " + mImagePath);
-                    Log.d(TAG,"Image saved:"+ mImagePath);
+                    showToast("Saved: " + mImageFile);
+                    Log.d(TAG,"Image saved:"+ mImageFile);
 
                     //unlockFocus(); //this returns camera to normal state.
                 }
@@ -1162,9 +1172,14 @@ public class Camera2BasicFragment extends Fragment
 
             case R.id.accept_button:{
                 Activity activity = getActivity();
+
+                Intent mediaStoreUpdateIntent = new Intent(Intent.ACTION_MEDIA_SCANNER_SCAN_FILE);
+                mediaStoreUpdateIntent.setData(Uri.fromFile(mImageFile));
+                getActivity().sendBroadcast(mediaStoreUpdateIntent);
+
                 if (null != activity){
                     Intent intent = new Intent(activity, ImageActivity.class);
-                    intent.putExtra("ImagePath", mImagePath);
+                    intent.putExtra("ImagePath", mImageFile.getAbsolutePath());
                     startActivity(intent);
                     activity.finish();
                 }
@@ -1172,6 +1187,8 @@ public class Camera2BasicFragment extends Fragment
             }
 
             case R.id.decline_button:{
+
+                mImageFile.delete();
                 unlockFocus();
                 mAcceptControl.setVisibility(View.GONE);
                 break;
@@ -1200,8 +1217,11 @@ public class Camera2BasicFragment extends Fragment
          * The file we save the image into.
          */
 
-        ImageSaver(Image image) {
+        private final File mFile;
+
+        ImageSaver(Image image, File file) {
             mImage = image;
+            mFile = file;
         }
 
         @Override
@@ -1211,21 +1231,13 @@ public class Camera2BasicFragment extends Fragment
             buffer.get(bytes);
             FileOutputStream output = null;
             try {
-                if(mImagePath == null){
-                    createImageFolder();
-                    createImageFileName();
-                }
-                Log.d(TAG,"ImageSaver:: image path"+mImagePath);
-                output = new FileOutputStream(mImagePath);
+                Log.d(TAG,"ImageSaver:: image path"+mFile.getAbsolutePath());
+                output = new FileOutputStream(mFile);
                 output.write(bytes);
             } catch (IOException e) {
                 e.printStackTrace();
             } finally {
                 mImage.close();
-
-                Intent mediaStoreUpdateIntent = new Intent(Intent.ACTION_MEDIA_SCANNER_SCAN_FILE);
-                mediaStoreUpdateIntent.setData(Uri.fromFile(new File(mImagePath)));
-                getActivity().sendBroadcast(mediaStoreUpdateIntent);
 
                 if (null != output) {
                     try {
