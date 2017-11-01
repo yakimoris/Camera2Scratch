@@ -48,6 +48,7 @@ import android.view.TextureView;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.FrameLayout;
+import android.widget.ImageView;
 import android.widget.Toast;
 
 import java.io.File;
@@ -143,6 +144,7 @@ public class Camera2BasicFragment extends Fragment
         @Override
         public void onSurfaceTextureAvailable(SurfaceTexture texture, int width, int height) {
             openCamera(width, height);
+
         }
 
         @Override
@@ -186,6 +188,7 @@ public class Camera2BasicFragment extends Fragment
      */
     private Size mPreviewSize;
 
+    /**
     /**
      * {@link CameraDevice.StateCallback} is called when {@link CameraDevice} changes its state.
      */
@@ -368,6 +371,11 @@ public class Camera2BasicFragment extends Fragment
 //    };
     private CameraCharacteristics mCameraInfo;
     private boolean mManualFocusEngaged = false;
+    private ImageView mAngleLeftBot;
+    private ImageView mAngleLeftTop;
+    private ImageView mAngleRightTop;
+    private ImageView mAngleRigthBot;
+
 
     /**
      * Shows a {@link Toast} on the UI thread.
@@ -467,6 +475,7 @@ public class Camera2BasicFragment extends Fragment
         view.findViewById(R.id.accept_button).setOnClickListener(this);
         view.findViewById(R.id.decline_button).setOnClickListener(this);
 
+        initFrame(view);
         mTextureView = (AutoFitTextureView) view.findViewById(R.id.texture);
 
         mAcceptControl = (FrameLayout) view.findViewById(R.id.control_accept);
@@ -637,11 +646,15 @@ public class Camera2BasicFragment extends Fragment
                         rotatedPreviewWidth, rotatedPreviewHeight, maxPreviewWidth,
                         maxPreviewHeight, largest);
 
+
                 // We fit the aspect ratio of TextureView to the size of preview we picked.
 //                int orientation = getResources().getConfiguration().orientation;
 //                if (orientation != Configuration.ORIENTATION_LANDSCAPE) {
                 mTextureView.setAspectRatio(
                         mPreviewSize.getHeight(), mPreviewSize.getWidth());
+
+
+                drawFrame();
 //
 //                } else {
 //                            mTextureView.setAspectRatio(
@@ -685,6 +698,7 @@ public class Camera2BasicFragment extends Fragment
 
         setUpCameraOutputs(width, height);
         configureTransform(width, height);
+
         Activity activity = getActivity();
         CameraManager manager = (CameraManager) activity.getSystemService(Context.CAMERA_SERVICE);
         try {
@@ -869,6 +883,7 @@ public class Camera2BasicFragment extends Fragment
                     = mCameraDevice.createCaptureRequest(CameraDevice.TEMPLATE_PREVIEW);
             mPreviewRequestBuilder.addTarget(surface);
 
+
             // Here, we create a CameraCaptureSession for camera preview.
             mCameraDevice.createCaptureSession(Arrays.asList(surface, mImageReader.getSurface()),
                     new CameraCaptureSession.StateCallback() {
@@ -941,6 +956,7 @@ public class Camera2BasicFragment extends Fragment
             matrix.postRotate(180, centerX, centerY);
         }
         mTextureView.setTransform(matrix);
+
     }
 
     /**
@@ -996,6 +1012,55 @@ public class Camera2BasicFragment extends Fragment
         }
     }
 
+    private void initFrame(View view){
+        mAngleLeftBot = (ImageView) view.findViewById(R.id.lb_angle);
+        mAngleLeftTop = (ImageView) view.findViewById(R.id.lt_angle);
+        mAngleRightTop = (ImageView) view.findViewById(R.id.rt_angle);
+        mAngleRigthBot = (ImageView) view.findViewById(R.id.rb_angle);
+    }
+
+    private void drawFrame(){
+
+
+        //x is width
+        //y is height
+
+        // 3/4 for the biggest dimension (width here)
+
+        int fullWidth = mPreviewSize.getWidth();
+        int fullHeight = mPreviewSize.getHeight();
+
+        float hotAreaWidth = 3*fullWidth/4;
+        float hotAreaHeight = (float) (fullHeight/2.05); //5.4 / 2.6337 = 2.05
+
+        int image_width = mAngleLeftTop.getWidth();
+        int image_height = mAngleLeftTop.getHeight();
+
+        float left = mTextureView.getY() + (fullHeight - hotAreaHeight)/2 ;
+        float right = left + hotAreaHeight - image_height;
+
+        float top = mTextureView.getX() + (fullWidth - hotAreaWidth)/2;
+        float bot = top + hotAreaWidth - image_width;
+
+
+        Log.d(TAG,"DrawFrame:: coordinates: bot: " + bot
+                +",  top "+ top+", right "+ right+", left "+ left);
+
+
+        Log.d(TAG,"DrawFrame::image_width"+image_width);
+        mAngleLeftTop.setX(left);
+        mAngleLeftTop.setY(top);
+
+        mAngleLeftBot.setX(left);
+        mAngleLeftBot.setY(bot);
+//
+        mAngleRightTop.setX(right);
+        mAngleRightTop.setY(top);
+
+        mAngleRigthBot.setX(right);
+        mAngleRigthBot.setY(bot);
+
+    }
     /**
      * Lock the focus as the first step for a still image capture.
      */
