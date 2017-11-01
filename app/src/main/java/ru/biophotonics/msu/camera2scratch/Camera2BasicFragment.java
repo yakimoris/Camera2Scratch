@@ -375,6 +375,7 @@ public class Camera2BasicFragment extends Fragment
     private ImageView mAngleLeftTop;
     private ImageView mAngleRightTop;
     private ImageView mAngleRigthBot;
+    private boolean mAntibandingModeSupported = false;
 
 
     /**
@@ -583,6 +584,24 @@ public class Camera2BasicFragment extends Fragment
                     mAutoFocusSupported = true;
                 }
 
+
+                //checking for antibanding modes
+                int [] aeAntibandingModes = characteristics.get(
+                        CameraCharacteristics.CONTROL_AE_AVAILABLE_ANTIBANDING_MODES);
+
+                for(int antibandingMode: aeAntibandingModes){
+                    Log.d(TAG,"setUpCameraOutputs::aeAntibandingModes:"+antibandingMode);
+                }
+
+                if (aeAntibandingModes.length == 0 || (aeAntibandingModes.length == 1
+                        && aeAntibandingModes[0] == CameraCharacteristics.CONTROL_AE_ANTIBANDING_MODE_OFF)) {
+                    Log.d(TAG,"setUpCameraOutputs::antibanding mode is not supported");
+                    mAntibandingModeSupported = false;
+                } else {
+                    Log.d(TAG,"setUpCameraOutputs::antibanding mode is supported");
+                    mAntibandingModeSupported = true;
+                }
+
                 // For still image captures, we use the largest available size.
                 Size largest = Collections.max(
                         Arrays.asList(map.getOutputSizes(ImageFormat.JPEG)),
@@ -755,6 +774,7 @@ public class Camera2BasicFragment extends Fragment
                            //the focus trigger is complete -
                            //resume repeating (preview surface will get frames), clear AF trigger
                            mPreviewRequestBuilder.set(CaptureRequest.CONTROL_AF_TRIGGER, null);
+                           setAntibandingMode(mPreviewRequestBuilder);
                            try {
                                mCaptureSession.setRepeatingRequest(mPreviewRequestBuilder.build(),
                                        mCaptureCallback, mBackgroundHandler);
@@ -783,6 +803,7 @@ public class Camera2BasicFragment extends Fragment
                mPreviewRequestBuilder.set(CaptureRequest.CONTROL_AF_TRIGGER, CameraMetadata.CONTROL_AF_TRIGGER_CANCEL);
                mPreviewRequestBuilder.set(CaptureRequest.CONTROL_AF_MODE, CaptureRequest.CONTROL_AF_MODE_OFF);
 
+               setAntibandingMode(mPreviewRequestBuilder);
                try {
                    mCaptureSession.capture(mPreviewRequestBuilder.build(),
                            captureCallbackHandler, mBackgroundHandler);
@@ -797,11 +818,13 @@ public class Camera2BasicFragment extends Fragment
                mPreviewRequestBuilder.set(CaptureRequest.CONTROL_MODE, CameraMetadata.CONTROL_MODE_AUTO);
                mPreviewRequestBuilder.set(CaptureRequest.CONTROL_AF_MODE, CaptureRequest.CONTROL_AF_MODE_AUTO);
                mPreviewRequestBuilder.set(CaptureRequest.CONTROL_AF_TRIGGER, CameraMetadata.CONTROL_AF_TRIGGER_START);
+               setAntibandingMode(mPreviewRequestBuilder);
                mPreviewRequestBuilder.setTag("FOCUS_TAG"); //we'll capture this later for resuming the preview
 
                //then we ask for a single request (not repeating!)
                try {
-                   mCaptureSession.capture(mPreviewRequestBuilder.build(), captureCallbackHandler, mBackgroundHandler);
+                   mCaptureSession.capture(mPreviewRequestBuilder.build(),
+                           captureCallbackHandler, mBackgroundHandler);
                } catch (CameraAccessException e) {
                    e.printStackTrace();
                }
@@ -884,9 +907,12 @@ public class Camera2BasicFragment extends Fragment
             mPreviewRequestBuilder.addTarget(surface);
 
 
+
             // Here, we create a CameraCaptureSession for camera preview.
             mCameraDevice.createCaptureSession(Arrays.asList(surface, mImageReader.getSurface()),
                     new CameraCaptureSession.StateCallback() {
+
+
 
                         @Override
                         public void onConfigured(@NonNull CameraCaptureSession cameraCaptureSession) {
@@ -904,6 +930,7 @@ public class Camera2BasicFragment extends Fragment
                                 // Flash is automatically enabled when necessary.
                                 setFlashOff(mPreviewRequestBuilder);
 
+                                setAntibandingMode(mPreviewRequestBuilder);
                                 // Finally, we start displaying the camera preview.
                                 mPreviewRequest = mPreviewRequestBuilder.build();
                                 mCaptureSession.setRepeatingRequest(mPreviewRequest,
@@ -923,6 +950,14 @@ public class Camera2BasicFragment extends Fragment
         } catch (CameraAccessException e) {
             e.printStackTrace();
         }
+    }
+
+    private void setAntibandingMode(CaptureRequest.Builder mPreviewRequestBuilder) {
+
+        if(mAntibandingModeSupported){
+            mPreviewRequestBuilder.set(CaptureRequest.CONTROL_AE_ANTIBANDING_MODE,
+                    CaptureRequest.CONTROL_AE_ANTIBANDING_MODE_50HZ);
+        } // Do nothing if it's not supported
     }
 
     /**
@@ -1071,6 +1106,7 @@ public class Camera2BasicFragment extends Fragment
                     CameraMetadata.CONTROL_AF_TRIGGER_START);
             // Tell #mCaptureCallback to wait for the lock.
             mState = STATE_WAITING_LOCK;
+            setAntibandingMode(mPreviewRequestBuilder);
             mCaptureSession.capture(mPreviewRequestBuilder.build(), mCaptureCallback,
                     mBackgroundHandler);
         } catch (CameraAccessException e) {
@@ -1204,6 +1240,7 @@ public class Camera2BasicFragment extends Fragment
             mPreviewRequestBuilder.set(CaptureRequest.CONTROL_AF_TRIGGER,
                     CameraMetadata.CONTROL_AF_TRIGGER_CANCEL);
             setFlashOff(mPreviewRequestBuilder);
+            setAntibandingMode(mPreviewRequestBuilder);
             mCaptureSession.capture(mPreviewRequestBuilder.build(), mCaptureCallback,
                     mBackgroundHandler);
             // After this, the camera will go back to the normal state of preview.
