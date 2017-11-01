@@ -300,12 +300,9 @@ public class Camera2BasicFragment extends Fragment
                 }
                 case STATE_WAITING_LOCK: {
 
-                    showToast("process:state waiting lock");
                     Integer afState = result.get(CaptureResult.CONTROL_AF_STATE);
 
-                    showToast("process: AF state"+afState);
                     if (afState == null) {
-                        showToast("process: state waiting lock: afState is null");
                         mState = STATE_PICTURE_TAKEN;
                         captureStillPicture();
                     } else if (CaptureResult.CONTROL_AF_STATE_FOCUSED_LOCKED == afState ||
@@ -315,15 +312,15 @@ public class Camera2BasicFragment extends Fragment
                         // CONTROL_AE_STATE can be null on some devices
 
                         Integer aeState = result.get(CaptureResult.CONTROL_AE_STATE);
-                        showToast("process: AE state: "+aeState);
+
                         if (aeState == null ||
                                 aeState == CaptureResult.CONTROL_AE_STATE_CONVERGED) {
 
-                            showToast("process: AE STATE CONVERGED");
+
                             mState = STATE_PICTURE_TAKEN;
                             captureStillPicture();
                         } else {
-                            showToast("process: running precapture sequence");
+
                             runPrecaptureSequence();
                         }
                     }
@@ -406,15 +403,23 @@ public class Camera2BasicFragment extends Fragment
      * @param aspectRatio       The aspect ratio
      * @return The optimal {@code Size}, or an arbitrary one if none were big enough
      */
+
+
     private static Size chooseOptimalSize(Size[] choices, int textureViewWidth,
             int textureViewHeight, int maxWidth, int maxHeight, Size aspectRatio) {
-
+        Log.d(TAG,"chooseOptimalSize::textureViewSize: WxH"+textureViewWidth+"x"+textureViewHeight);
         // Collect the supported resolutions that are at least as big as the preview Surface
         List<Size> bigEnough = new ArrayList<>();
         // Collect the supported resolutions that are smaller than the preview Surface
         List<Size> notBigEnough = new ArrayList<>();
+
+        //TODO: delete if it isn't working
+
+        List<Size> optimal = new ArrayList<>();
         int w = aspectRatio.getWidth();
         int h = aspectRatio.getHeight();
+
+
         for (Size option : choices) {
             if (option.getWidth() <= maxWidth && option.getHeight() <= maxHeight &&
                     option.getHeight() == option.getWidth() * h / w) {
@@ -424,6 +429,11 @@ public class Camera2BasicFragment extends Fragment
                 } else {
                     notBigEnough.add(option);
                 }
+            }
+
+            Log.d(TAG,"chooseOptimalSize::option" + option.toString());
+            if(option.getWidth() == textureViewWidth &&
+                    option.getHeight() == textureViewHeight){
             }
         }
 
@@ -713,7 +723,7 @@ public class Camera2BasicFragment extends Fragment
                // (via SENSOR_ORIENTATION)
                final int y = (int)((motionEvent.getX() / (float)view.getWidth())  * (float)sensorArraySize.height());
                final int x = (int)((motionEvent.getY() / (float)view.getHeight()) * (float)sensorArraySize.width());
-               
+
                final int halfTouchWidth  = 150; //(int)motionEvent.getTouchMajor();
                // TODO: this doesn't represent actual touch size in pixel. Values range in [3, 10]...
                final int halfTouchHeight = 150; //(int)motionEvent.getTouchMinor();
@@ -963,8 +973,8 @@ public class Camera2BasicFragment extends Fragment
 
     private File createImageFileName() throws IOException {
         String timestamp = new SimpleDateFormat("yyyyMMdd_HHmmss").format(new Date());
-        String prepend = "IMAGE_" + timestamp + "_";
-        File imageFile = File.createTempFile(prepend, ".jpg", mImageFolder);
+        String prepend = "U_" + timestamp;
+        File imageFile = new File(mImageFolder,prepend+".jpg" );
         mImagePath = imageFile.getAbsolutePath();
         Log.d(TAG,"createImageFileName:: ImagePath"+mImagePath);
         return imageFile;
@@ -1032,6 +1042,7 @@ public class Camera2BasicFragment extends Fragment
             if (null == activity || null == mCameraDevice) {
                 return;
             }
+
 
 
             // This is the CaptureRequest.Builder that we use to take a picture.
