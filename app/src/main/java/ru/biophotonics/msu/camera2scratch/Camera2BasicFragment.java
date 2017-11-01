@@ -144,7 +144,6 @@ public class Camera2BasicFragment extends Fragment
         @Override
         public void onSurfaceTextureAvailable(SurfaceTexture texture, int width, int height) {
             openCamera(width, height);
-
         }
 
         @Override
@@ -479,6 +478,7 @@ public class Camera2BasicFragment extends Fragment
         initFrame(view);
         mTextureView = (AutoFitTextureView) view.findViewById(R.id.texture);
 
+        debug("onViewCreated");
         mAcceptControl = (FrameLayout) view.findViewById(R.id.control_accept);
     }
 
@@ -498,11 +498,17 @@ public class Camera2BasicFragment extends Fragment
         // the SurfaceTextureListener).
         if (mTextureView.isAvailable()) {
             openCamera(mTextureView.getWidth(), mTextureView.getHeight());
+            debug("onResume true");
         } else {
             mTextureView.setSurfaceTextureListener(mSurfaceTextureListener);
+            debug("onResume false");
         }
+
     }
 
+    private void debug(String place){
+        Log.d(TAG,place+" :: mTextureView size:: WxH "+mTextureView.getWidth() + "x" + mTextureView.getHeight());
+    }
     @Override
     public void onPause() {
 
@@ -672,8 +678,11 @@ public class Camera2BasicFragment extends Fragment
                 mTextureView.setAspectRatio(
                         mPreviewSize.getHeight(), mPreviewSize.getWidth());
 
+                debug("setUpCameraOutputs");
 
-                drawFrame();
+
+
+
 //
 //                } else {
 //                            mTextureView.setAspectRatio(
@@ -687,6 +696,7 @@ public class Camera2BasicFragment extends Fragment
                 mFlashSupported = available == null ? false : available;
 
                 mCameraId = cameraId;
+
                 return;
             }
         } catch (CameraAccessException e) {
@@ -893,6 +903,8 @@ public class Camera2BasicFragment extends Fragment
     private void createCameraPreviewSession() {
         try {
             SurfaceTexture texture = mTextureView.getSurfaceTexture();
+            debug("createCameraPreviewSession");
+
             assert texture != null;
 
             // We configure the size of default buffer to be the size of camera preview we want.
@@ -991,6 +1003,8 @@ public class Camera2BasicFragment extends Fragment
             matrix.postRotate(180, centerX, centerY);
         }
         mTextureView.setTransform(matrix);
+        debug("configureTransform");
+        drawFrame();
 
     }
 
@@ -1062,9 +1076,11 @@ public class Camera2BasicFragment extends Fragment
 
         // 3/4 for the biggest dimension (width here)
 
-        int fullWidth = mPreviewSize.getWidth();
-        int fullHeight = mPreviewSize.getHeight();
+        Log.d(TAG,"DrawFrame::"+mTextureView.getWidth()+"x"+mTextureView.getHeight());
+        int fullWidth = mTextureView.getHeight();//mPreviewSize.getWidth();
+        int fullHeight = mTextureView.getWidth();//mPreviewSize.getHeight();
 
+        Log.d(TAG,"DrawFrame::mTextureViewBottom"+mTextureView.getBottom());
         float hotAreaWidth = 3*fullWidth/4;
         float hotAreaHeight = (float) (fullHeight/2.05); //5.4 / 2.6337 = 2.05
 
